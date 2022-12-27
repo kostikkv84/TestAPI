@@ -1,12 +1,17 @@
 package api;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import io.restassured.http.ContentType;
-import io.restassured.specification.ResponseSpecification;
+import login.SuccessLogin;
+import login.UserLoginTest;
+import login.UserUnsaccessLogin;
 import org.junit.Assert;
 import org.junit.Test;
+import register.Register;
+import register.SuccessReg;
+import register.UnSuccessReg;
+import spec.Specifications;
 
 
+import java.time.Clock;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -84,22 +89,83 @@ public class ReqresTest {
     }
 
     @Test
-    public void sortListToYear (){ // проверка, что в ответе года отсортированы по возрастанию.
-        //1. Проверка на код ответа 200
+    public void sortListToYear () {
         Specifications.installSpecification(Specifications.requestSpec(URL),Specifications.responseSpecOK200());
         //2. Получаем список
         List<SortListToYear> yearList = given()
                 .when()
-                .get("api/unknown")
+                .get("api/unknown")// Запрос типа Get
                 .then().log().all()
                 .extract().body().jsonPath().getList("data", SortListToYear.class);
 
         //3. собираем только года в список
         List<Integer> years = yearList.stream().map(SortListToYear::getYear).collect(Collectors.toList()); // Полученный список
+              //  years.add(1987); для проверки добавил год, в результате сравнение падает, как и ожидалось.
         //4. сортируем
         List<Integer> sortedYears = years.stream().sorted().collect(Collectors.toList()); // его же сортируем (полуаем Ожидаемый)
         //5. Сравниваем списки.
         Assert.assertEquals(years,sortedYears);
+        System.out.println(years);
+        System.out.println(sortedYears);
+    }
 
+    @Test
+    public void deleteRequest () {
+        Specifications.installSpecification(Specifications.requestSpec(URL),Specifications.responseSpecUniq(204));
+        given()
+                .when()
+                .delete("api/users/2") // Запрос типа Delete
+                .then().log().all();
+    }
+
+    @Test
+    public void putTimeTest () {
+        Specifications.installSpecification(Specifications.requestSpec(URL),Specifications.responseSpecOK200());
+        //
+        UserTime user = new UserTime("morpheus", "zion resident"); // записываем данные для передачи в запрос
+        // создаем запрос
+        UserTimeResponse response = given()
+                .body(user) //указываем тело запроса
+                .when()
+                .put("api/users/2")
+                .then().log().all()
+                .extract().as(UserTimeResponse.class);
+        String regex = "(.{5})$"; //https://regex101.com/ - тут создали регулярное выражение удаляющее последние 5 символов строке со временем
+        String currentTime = Clock.systemUTC().instant().toString().replaceAll("(.{11})$",""); // получили время в формате - 2022-12-27T11:13:01.811012600Z
+        System.out.println(currentTime);
+        Assert.assertEquals(currentTime, response.getUpdatedAt().replaceAll(regex, ""));
+        System.out.println(response.getUpdatedAt().replaceAll(regex, ""));
+
+    }
+
+    @Test
+    public void postLoginSuccess () {
+        Specifications.installSpecification(Specifications.requestSpec(URL),Specifications.responseSpecOK200());
+
+        String token = "QpwL5tke4Pnpja7X4";
+
+        UserLoginTest userLogin = new UserLoginTest("eve.holt@reqres.in","cityslicka"); // передаем в запрос эти данные
+        //создаем запрос
+        SuccessLogin login = given()
+                .body(userLogin)
+                .when()
+                .post("api/login")
+                .then().log().all()
+                .extract().as(SuccessLogin.class);
+        Assert.assertEquals(token,login.getToken());
+    }
+
+    @Test
+    public void postLoginUnSaccess () {
+        Specifications.installSpecification(Specifications.requestSpec(URL),Specifications.responseSpecError400());
+
+        UserLoginTest loginUser = new UserLoginTest("peter@klaven",""); // в логин передаем только email
+        UserUnsaccessLogin unsaccessLogin = given()
+                .body(loginUser)
+                .when()
+                .post("api/login")
+                .then().log().all()
+                .extract().as(UserUnsaccessLogin.class);
+        Assert.assertEquals("Missing password", unsaccessLogin.getError());
     }
 }

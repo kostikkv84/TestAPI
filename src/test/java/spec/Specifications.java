@@ -1,4 +1,4 @@
-package api;
+package spec;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -10,7 +10,7 @@ import org.asynchttpclient.RequestBuilder;
 
 public class Specifications {
     // создадим базовую спецификацию для запроса и ответа. чтобы не вводить постоянно Url
-    public static RequestSpecification requestSpec(String url) {
+    public static RequestSpecification requestSpec(String url) { // метод позволяет вводить URL
         return new RequestSpecBuilder()
                 .setBaseUri(url)
                 .setContentType(ContentType.JSON)
@@ -24,7 +24,12 @@ public class Specifications {
     }
     public static ResponseSpecification responseSpecError400(){
         return new ResponseSpecBuilder()
-                .expectStatusCode(400) // если статус код не 200 то тест сразу останавливается.
+                .expectStatusCode(400) // если статус код не 400 то тест сразу останавливается.
+                .build();
+    }
+    public static ResponseSpecification responseSpecUniq(int status){
+        return new ResponseSpecBuilder()
+                .expectStatusCode(status) // если статус код не 204 то тест сразу останавливается.
                 .build();
     }
 
